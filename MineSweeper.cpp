@@ -1,4 +1,5 @@
 #include "BrokenEngine2D.hpp"
+#include <time.h>
 
 class MineSweeper : public BrokenEngine2D
 {
@@ -7,10 +8,17 @@ public:
 	}
 
 private:
+	bool m_minefield[400];
 
 protected:
 	virtual bool onCreate() {
-		
+		srand(time(NULL));
+		for (int i = 0; i < 400; i++) {
+			m_minefield[i] = false;
+		}
+		for (int i = 0; i < 40; i++) {
+			m_minefield[rand() % 400] = true;
+		}
 		return true;
 	}
 
@@ -23,7 +31,11 @@ protected:
 	virtual bool onRender(Graphics t_graphics)
 	{
 		t_graphics.Clear();
-		t_graphics.Fill(0, 0, 30, 30, 0x2593, BEFG_GREY);
+		for (int i = 0; i < 400; i++){
+			if (!m_minefield[i]) {
+				t_graphics.Draw(i - (i / 20) * 20, i / 20);
+			}
+		}
 		return true;
 	}
 };
