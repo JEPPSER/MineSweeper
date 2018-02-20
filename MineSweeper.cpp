@@ -12,6 +12,7 @@ private:
 	bool m_minefield[400];
 	int m_numbers[400];
 	std::string m_view[400];
+	bool m_dead = false;
 
 	int toX(int index) {
 		return index - (index / 20) * 20;
@@ -25,51 +26,29 @@ private:
 		return 20 * y + x;
 	}
 
+	bool isOutOfBounds(int x, int y) {
+		if (x < 0 || x > 19 || y < 0 || y > 19) {
+			return true;
+		}
+		return false;
+	}
+
 	void calcNumbers() {
-		for (int i = 0; i < 400; i++) {
-			if (!m_minefield[i]) {
+		for (int k = 0; k < 400; k++) {
+			if (!m_minefield[k]) {
 				int count = 0;
-				if (toY(i) != 0 && toX(i) != 0) {
-					if (m_minefield[toIndex(toX(i) - 1, toY(i) - 1)]) {
-						count++;
+				for (int i = 0; i < 3; i++) {
+					for (int j = 0; j < 3; j++) {
+						int x = toX(k) + 1 - j;
+						int y = toY(k) + 1 - i;
+						if (!isOutOfBounds(x, y)) {
+							if (m_minefield[toIndex(x, y)]) {
+								count++;
+							}
+						}
 					}
 				}
-				if (toY(i) != 0) {
-					if (m_minefield[toIndex(toX(i), toY(i) - 1)]) {
-						count++;
-					}
-				}
-				if (toY(i) != 0 && toX(i) != 19) {
-					if (m_minefield[toIndex(toX(i) + 1, toY(i) - 1)]) {
-						count++;
-					}
-				}
-				if (toX(i) != 0) {
-					if (m_minefield[toIndex(toX(i) - 1, toY(i))]) {
-						count++;
-					}
-				}
-				if (toX(i) != 19) {
-					if (m_minefield[toIndex(toX(i) + 1, toY(i))]) {
-						count++;
-					}
-				}
-				if (toX(i) != 0 && toY(i) != 19) {
-					if (m_minefield[toIndex(toX(i) - 1, toY(i) + 1)]) {
-						count++;
-					}
-				}
-				if (toY(i) != 19) {
-					if (m_minefield[toIndex(toX(i), toY(i) + 1)]) {
-						count++;
-					}
-				}
-				if (toY(i) != 19 && toX(i) != 19) {
-					if (m_minefield[toIndex(toX(i) + 1, toY(i) + 1)]) {
-						count++;
-					}
-				}
-				m_numbers[i] = count;
+				m_numbers[k] = count;
 			}
 		}
 	}
@@ -77,9 +56,11 @@ private:
 protected:
 	virtual bool onCreate() {
 		srand(time(NULL));
+		m_dead = false;
 		for (int i = 0; i < 400; i++) {
 			m_minefield[i] = false;
 			m_view[i] = "";
+			m_numbers[i] = 0;
 		}
 		for (int i = 0; i < 40; i++) {
 			int r = rand() % 400;
@@ -91,16 +72,49 @@ protected:
 
 	virtual bool onUpdate(Input t_input, float t_elapsedTime)
 	{
-		if (t_input.getMouseKey(0).m_pressed) {
+		if (m_dead && t_input.getKey(VK_SPACE).m_pressed) {
+			onCreate();
+		}
+		else if (t_input.getMouseKey(0).m_pressed && !m_dead) {
 			int x = t_input.getMouseX();
 			int y = t_input.getMouseY();
 			if (m_minefield[toIndex(x, y)]) {
-				m_view[toIndex(x, y)] = "x";
+				m_view[toIndex(x, y)] = "X"; // Hit a mine.
+				m_dead = true;
 			}
 			else {
+				// Uncovering the clicked square.
 				m_view[toIndex(x, y)] = std::to_string(m_numbers[toIndex(x, y)]);
+
+				// If 0 mines are next to the clicked square.
 				if (m_view[toIndex(x, y)] == "0") {
 					m_view[toIndex(x, y)] = " ";
+
+					// Runs 20 times to make sure all squares are uncovered.
+					for (int a = 0; a < 20; a++) {
+
+						// Looping through all squares.
+						for (int k = 0; k < 400; k++) {
+
+							// If square is 0, uncover all squares around it.
+							if (m_view[k] == " ") {
+								for (int i = 0; i < 3; i++) {
+									for (int j = 0; j < 3; j++) {
+										int x = toX(k) + 1 - j;
+										int y = toY(k) + 1 - i;
+
+										// Only uncover square if the index is within bounds.
+										if (!isOutOfBounds(x, y)) {
+											m_view[toIndex(x, y)] = std::to_string(m_numbers[toIndex(x, y)]);
+											if (m_view[toIndex(x, y)] == "0") {
+												m_view[toIndex(x, y)] = " ";
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -124,8 +138,15 @@ protected:
 			else if (m_view[i] == "4") {
 				t_graphics.DrawString(toX(i), toY(i), m_view[i], BEFG_DARK_CYAN);
 			}
+			else if (m_view[i] == "X") {
+				t_graphics.DrawString(toX(i), toY(i), m_view[i], BEFG_WHITE);
+			}
 			else {
 				t_graphics.DrawString(toX(i), toY(i), m_view[i], BEFG_DARK_GREEN);
+			}
+			if (m_dead) {
+				t_graphics.DrawString(6, 10, "You died");
+				t_graphics.DrawString(0, 11, "Press Space to Retry");
 			}
 		}
 		return true;
