@@ -13,6 +13,8 @@ private:
 	int m_numbers[400];
 	std::string m_view[400];
 	bool m_dead = false;
+	bool m_won = false;
+	int m_minecount = 40;
 
 	int toX(int index) {
 		return index - (index / 20) * 20;
@@ -57,14 +59,21 @@ protected:
 	virtual bool onCreate() {
 		srand(time(NULL));
 		m_dead = false;
+		m_won = false;
 		for (int i = 0; i < 400; i++) {
 			m_minefield[i] = false;
 			m_view[i] = "";
 			m_numbers[i] = 0;
 		}
-		for (int i = 0; i < 40; i++) {
-			int r = rand() % 400;
-			m_minefield[r] = true;
+		for (int i = 0; i < m_minecount; i++) {
+			bool done = false;
+			while (!done) {
+				int r = rand() % 400;
+				if (!m_minefield[r]) {
+					m_minefield[r] = true;
+					done = true;
+				}
+			}
 		}
 		calcNumbers();
 		return true;
@@ -72,10 +81,12 @@ protected:
 
 	virtual bool onUpdate(Input t_input, float t_elapsedTime)
 	{
-		if (m_dead && t_input.getKey(VK_SPACE).m_pressed) {
-			onCreate();
+		if (m_dead || m_won) {
+			if (t_input.getKey(VK_SPACE).m_pressed) {
+				onCreate();
+			}
 		}
-		else if (t_input.getMouseKey(0).m_pressed && !m_dead) {
+		else if (t_input.getMouseKey(0).m_pressed && !m_dead && !m_won) {
 			int x = t_input.getMouseX();
 			int y = t_input.getMouseY();
 			if (m_minefield[toIndex(x, y)]) {
@@ -116,6 +127,17 @@ protected:
 						}
 					}
 				}
+
+				// Checking if player has won.
+				int num = 0;
+				for (int i = 0; i < 400; i++) {
+					if (m_view[i] == "") {
+						num++;
+					}
+				}
+				if (num == m_minecount) {
+					m_won = true;
+				}
 			}
 		}
 		return true;
@@ -144,10 +166,14 @@ protected:
 			else {
 				t_graphics.DrawString(toX(i), toY(i), m_view[i], BEFG_DARK_GREEN);
 			}
-			if (m_dead) {
-				t_graphics.DrawString(6, 10, "You died");
-				t_graphics.DrawString(0, 11, "Press Space to Retry");
-			}
+		}
+		if (m_dead) {
+			t_graphics.DrawString(6, 10, "You died");
+			t_graphics.DrawString(0, 11, "Press Space to Retry");
+		}
+		if (m_won) {
+			t_graphics.DrawString(6, 10, "You won!");
+			t_graphics.DrawString(0, 11, "Press Space to Retry");
 		}
 		return true;
 	}
